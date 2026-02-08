@@ -4,6 +4,7 @@ class Bola {
         this.y = y;
         this.raio = raio;
 
+        // vetor de velocidade
         this.vel = createVector(0, 0);
         this.emMovimento = false;
         this.emRede = false;
@@ -16,6 +17,7 @@ class Bola {
         this.emMovimento = false;
     }
 
+    // Aplica força e direção ao remate
     rematar(forca, alvoX, alvoY) {
         if (alvoY > this.y) {
             alvoY = this.y - 10;

@@ -2,13 +2,25 @@ let bola;
 let imgBola;
 let mic;
 
+// bola
 let bolaBaseX;
 let bolaBaseY;
-let jogoAtivo = false;
 
+//estado do jogo
+let jogoAtivo = false;
 let podeRematar = true;
+
+// Contador de golos e controlo de golo por remate
 let golos = 0;
 let goloMarcado = false;
+
+// Baliza
+let xEsqBaliza, xDirBaliza;
+let yBarraBaliza, yFundoBaliza;
+let larguraBaliza = 360;
+let alturaBaliza = 80;
+
+let distanciaRemate = 360;
 
 function preload() {
     imgBola = loadImage("img/bola.png");
@@ -17,16 +29,20 @@ function preload() {
 function setup() {
     createCanvas(900, 500);
 
-    // frente da baliza
-    let yLinhaGrandeArea = 40;
-    let yTopoBaliza = yLinhaGrandeArea - 25;
-    let yFrenteBaliza = yTopoBaliza + 80;
+    // Posição da baliza 
+    let centroX = width / 2;
+    xEsqBaliza = centroX - larguraBaliza / 2;
+    xDirBaliza = centroX + larguraBaliza / 2;
 
-    bolaBaseX = width / 2;
-    bolaBaseY = yFrenteBaliza + 280 + 65;
+    let yLinhaGrandeArea = 40;
+    yBarraBaliza = yLinhaGrandeArea - 25;
+    yFundoBaliza = yBarraBaliza + alturaBaliza;
+
+    // Posição inicial da bola
+    bolaBaseX = centroX;
+    bolaBaseY = yFundoBaliza + distanciaRemate;
 
     bola = new Bola(bolaBaseX, bolaBaseY, 20);
-
 }
 
 function draw() {
@@ -36,16 +52,16 @@ function draw() {
     desenharBaliza();
     desenharRedeBaliza();
 
-    // atualizar primeiro
+    // atualiza a posicao da bola
     bola.atualizar();
 
     if (bola.emMovimento) {
         verificarGolo();
     }
 
-    // desenhar depois
     bola.desenhar();
 
+    // Remate com som
     if (jogoAtivo && mic && !bola.emMovimento) {
         let nivelSom = mic.getLevel();
 
@@ -57,21 +73,18 @@ function draw() {
             podeRematar = false;
         }
     }
-    // desbloqueia quando a bola parar
+
+    // reset para novo remate
     if (!bola.emMovimento) {
         podeRematar = true;
+        goloMarcado = false;
     }
-    
-    fill(20);
-    textSize(30);
-    text("som: " + nf(mic ? mic.getLevel() : 0, 1, 3), 20, 30);
 
     fill(20);
     textSize(30);
+    text("Som: " + nf(mic ? mic.getLevel() : 0, 1, 3), 20, 30);
     text("Golos: " + golos, 20, 70);
-
 }
-
 
 // Campo
 function desenharCampo() {
@@ -81,23 +94,16 @@ function desenharCampo() {
     strokeWeight(3);
     noFill();
 
-    // linhas exteriores
-    rect(0, 95, width , height);
-}
+    // linhas exteriores do campo
+    rect(0, 95, width, height);
 
-// Baliza
-function desenharBaliza() {
-    stroke(255);
-    strokeWeight(3);
-    noFill();
-
+    // Grande area
     let centroX = width / 2;
 
     let yLinhaGrandeArea = 40;
     let yTopoBaliza = yLinhaGrandeArea - 25;
     let yFrenteBaliza = yTopoBaliza + 80;
 
-    // Grande área começa exatamente na frente da baliza
     rect(
         centroX - 630 / 2,
         yFrenteBaliza,
@@ -106,78 +112,93 @@ function desenharBaliza() {
     );
 }
 
+// Baliza -- usa a geometria global
+function desenharBaliza() {
+    stroke(255);
+    strokeWeight(3);
+    noFill();
+
+    // barra
+    line(xEsqBaliza, yBarraBaliza, xDirBaliza, yBarraBaliza);
+
+    // postes
+    line(xEsqBaliza, yBarraBaliza, xEsqBaliza, yFundoBaliza);
+    line(xDirBaliza, yBarraBaliza, xDirBaliza, yFundoBaliza);
+}
 
 function desenharRedeBaliza() {
-    let centroX = width / 2;
-
-    let xEsq = centroX - 360 / 2;
-    let xDir = centroX + 360 / 2;
-
-    let yLinhaGrandeArea = 40;
-    let yTopo = yLinhaGrandeArea - 25;
-    let yFundo = yTopo + 80;
-
     push();
-
-    // limitar desenho à área da baliza
-    clip(() => {
-        rect(xEsq, yTopo, 360, 80);
-    });
+    clip(() => rect(xEsqBaliza, yBarraBaliza, larguraBaliza, alturaBaliza));
 
     stroke(255, 180);
     strokeWeight(1);
 
     let espacamento = 18;
-
-    // diagonais ↘
-    for (let x = xEsq - 100; x < xDir + 100; x += espacamento) {
-        line(x, yTopo, x + 120, yFundo);
-    }
-
-    // diagonais ↗
-    for (let x = xEsq - 100; x < xDir + 100; x += espacamento) {
-        line(x, yFundo, x + 120, yTopo);
+    for (let x = xEsqBaliza - 100; x < xDirBaliza + 100; x += espacamento) {
+        line(x, yBarraBaliza, x + 120, yFundoBaliza);
+        line(x, yFundoBaliza, x + 120, yBarraBaliza);
     }
 
     pop();
-
-    // postes e barra (à frente da rede)
-    stroke(255);
-    strokeWeight(3);
-    noFill();
-
-    line(xEsq, yTopo, xDir, yTopo);     // barra
-    line(xEsq, yTopo, xEsq, yFundo);    // poste esquerdo
-    line(xDir, yTopo, xDir, yFundo);    // poste direito
-
 }
 
+// Golo e colisões
 function verificarGolo() {
-    let centroX = width / 2;
-    let xEsq = centroX - 360 / 2;
-    let xDir = centroX + 360 / 2;
 
-    let yLinhaGrandeArea = 40;
-    let yTopo = yLinhaGrandeArea - 25;
-
+    // Barra "prende" a bola sempre
     if (
-        !goloMarcado &&
-        bola.x - bola.raio > xEsq &&
-        bola.x + bola.raio < xDir &&
-        bola.y - bola.raio <= yTopo
+        bola.x - bola.raio > xEsqBaliza &&
+        bola.x + bola.raio < xDirBaliza &&
+        bola.y - bola.raio <= yBarraBaliza
     ) {
-        golos++;
-        goloMarcado = true;
+        if (!goloMarcado) {
+            golos++;
+            goloMarcado = true;
+        }
 
-        // fixa a bola NA LINHA
-        bola.y = yTopo + bola.raio;
+        // Interrompe o movimento da bola
+        bola.y = yBarraBaliza + bola.raio;
         bola.vel.set(0, 0);
         bola.emMovimento = false;
+        return;
+    }
+
+    // Poste esquerdo
+    if (
+        bola.y - bola.raio > yBarraBaliza &&
+        bola.y + bola.raio < yFundoBaliza &&
+        bola.x - bola.raio <= xEsqBaliza &&
+        bola.x > xEsqBaliza
+    ) {
+        if (!goloMarcado) {
+            golos++;
+            goloMarcado = true;
+        }
+
+        //rebate bola
+        bola.vel.x *= -1;
+        bola.x = xEsqBaliza + bola.raio + 1;
+    }
+
+    // Poste direito
+    if (
+        bola.y - bola.raio > yBarraBaliza &&
+        bola.y + bola.raio < yFundoBaliza &&
+        bola.x + bola.raio >= xDirBaliza &&
+        bola.x < xDirBaliza
+    ) {
+        if (!goloMarcado) {
+            golos++;
+            goloMarcado = true;
+        }
+
+        //rebate bola
+        bola.vel.x *= -1;
+        bola.x = xDirBaliza - bola.raio - 1;
     }
 }
 
-
-
+// som
 function mousePressed() {
     if (!jogoAtivo) {
         userStartAudio();
@@ -186,7 +207,3 @@ function mousePressed() {
         jogoAtivo = true;
     }
 }
-
-
-
-
